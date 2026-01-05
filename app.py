@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 from flask import send_file
 from io import BytesIO
 import logging
+import os
 from bson import ObjectId
 
 from profile_parser import parse_profile_input
@@ -23,11 +24,16 @@ app = Flask(__name__)
 # ✅ CORS Configuration - Allow React frontend
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+        "origins": [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://your-frontend-domain.com"
+        ],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
 })
+
 
 # ✅ Configure logging for debugging
 logging.basicConfig(level=logging.INFO)
@@ -322,7 +328,8 @@ def show_routes():
 # Entry
 # ------------------------------
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
 
 
