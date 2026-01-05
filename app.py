@@ -27,7 +27,7 @@ CORS(app, resources={
         "origins": [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "https://your-frontend-domain.com"
+            "https://resumeiq.sentiq.com"
         ],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
@@ -330,6 +330,7 @@ def show_routes():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
