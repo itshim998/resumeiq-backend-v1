@@ -99,7 +99,7 @@ def render_resume(resume_id):
 # Profile
 # ------------------------------
 
-@app.route("/api/profile/ingest", methods=["GET", "POST", "OPTIONS"])
+@app.route("/api/profile/ingest", methods=["GET", "POST"])
 def ingest_profile_post():
     """
     Ingest profile from three sources:
@@ -114,9 +114,6 @@ def ingest_profile_post():
         logger.info(f"[INGEST] Headers: {dict(request.headers)}")
         logger.info(f"[INGEST] Content-Type: {request.content_type}")
         
-        # ✅ Handle preflight
-        if request.method == "OPTIONS":
-            return jsonify({"ok": True}), 200
         
         # 1️⃣ Try JSON first (React / API clients)
         json_data = request.get_json(silent=True)
@@ -336,6 +333,7 @@ def show_routes():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
