@@ -5,17 +5,12 @@ Handles MongoDB access for resumes.
 """
 
 import os
-from pymongo import MongoClient
 from bson import ObjectId
 from dotenv import load_dotenv
 
 load_dotenv()
+from db import db
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-DB_NAME = os.getenv("RESUMEIQ_DB", "sentiq_resumeiq")
-
-client = MongoClient(MONGODB_URI)
-db = client[DB_NAME]
 resumes_collection = db["resumes"]
 
 
