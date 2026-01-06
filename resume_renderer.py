@@ -17,7 +17,6 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Tuple
 from io import BytesIO
-from pymongo import MongoClient
 from bson import ObjectId
 from dotenv import load_dotenv
 import pdfkit
@@ -37,12 +36,7 @@ logger = logging.getLogger(__name__)
 # ==============================
 
 load_dotenv()
-
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-DB_NAME = os.getenv("RESUMEIQ_DB", "sentiq_resumeiq")
-
-client = MongoClient(MONGODB_URI)
-db = client[DB_NAME]
+from db import db
 
 resumes_collection = db["resumes"]
 rendered_collection = db["rendered_resumes"]
