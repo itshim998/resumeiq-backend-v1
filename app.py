@@ -26,7 +26,7 @@ app = Flask(__name__)
 # as a comma-separated list. Defaults to the production frontends.
 cors_origins = os.environ.get(
     "CORS_ORIGINS",
-    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com"
+    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com,https://resumeiqv1.sentiqlabs.com"
 ).split(",")
 
 CORS(app, resources={
