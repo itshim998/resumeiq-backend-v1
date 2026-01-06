@@ -22,17 +22,23 @@ from portfolio_generator import generate_portfolio
 app = Flask(__name__)
 
 # ✅ CORS Configuration - Allow React frontend
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "https://resumeiq.sentiqlabs.com"
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:5173",
+                "https://resumeiq.sentiqlabs.com",
+                "https://resumeiqv1.sentiqlabs.com",
+                "https://recruiteriq.sentiqlabs.com"
+            ],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+        }
     }
-})
+)
+
+
 
 
 # ✅ Configure logging for debugging
@@ -330,6 +336,7 @@ def show_routes():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
