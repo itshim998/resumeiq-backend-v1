@@ -22,23 +22,20 @@ from portfolio_generator import generate_portfolio
 app = Flask(__name__)
 
 # ✅ CORS Configuration - Allow React frontend
-CORS(
-    app,
-    resources={
-        r"/api/*": {
-            "origins": [
-                "http://localhost:5173",
-                "https://resumeiq.sentiqlabs.com",
-                "https://resumeiqv1.sentiqlabs.com",
-                "https://recruiteriq.sentiqlabs.com"
-            ],
-            "methods": ["GET", "POST", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-        }
+# CORS origins may be set via the environment variable `CORS_ORIGINS`
+# as a comma-separated list. Defaults to the production frontends.
+cors_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com"
+).split(",")
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": cors_origins,
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
     }
-)
-
-
+})
 
 
 # ✅ Configure logging for debugging
@@ -99,7 +96,7 @@ def render_resume(resume_id):
 # Profile
 # ------------------------------
 
-@app.route("/api/profile/ingest", methods=["GET", "POST"])
+@app.route("/api/profile/ingest", methods=["GET", "POST", "OPTIONS"])
 def ingest_profile_post():
     """
     Ingest profile from three sources:
@@ -114,6 +111,9 @@ def ingest_profile_post():
         logger.info(f"[INGEST] Headers: {dict(request.headers)}")
         logger.info(f"[INGEST] Content-Type: {request.content_type}")
         
+        # ✅ Handle preflight
+        if request.method == "OPTIONS":
+            return jsonify({"ok": True}), 200
         
         # 1️⃣ Try JSON first (React / API clients)
         json_data = request.get_json(silent=True)
@@ -333,10 +333,6 @@ def show_routes():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
-
-
 
 
 
