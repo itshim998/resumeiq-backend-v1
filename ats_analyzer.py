@@ -18,7 +18,6 @@ import logging
 from datetime import datetime
 from typing import List, Dict
 
-from pymongo import MongoClient
 from bson import ObjectId
 from dotenv import load_dotenv
 
@@ -35,12 +34,8 @@ logger = logging.getLogger(__name__)
 # -------------------------
 
 load_dotenv()
+from db import db
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-DB_NAME = os.getenv("RESUMEIQ_DB", "sentiq_resumeiq")
-
-client = MongoClient(MONGODB_URI)
-db = client[DB_NAME]
 ats_collection = db["ats_reports"]
 
 # -------------------------
@@ -257,3 +252,4 @@ def analyze_resume(resume_id: str, job_description: str) -> Dict:
     logger.info(f"[ATS] Analysis complete: {report['_id']}")
 
     return report
+
