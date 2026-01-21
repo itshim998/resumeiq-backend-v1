@@ -17,7 +17,10 @@ from resume_generator import generate_resume_from_profile
 from resume_repository import get_resume_by_id
 from ats_analyzer import analyze_resume
 from resume_renderer import render_resume_pdf
+
+# Portfolio imports
 from portfolio_generator import generate_portfolio
+from portfolio_repository import get_portfolio_by_id
 
 app = Flask(__name__)
 
@@ -26,7 +29,7 @@ app = Flask(__name__)
 # as a comma-separated list. Defaults to the production frontends.
 cors_origins = os.environ.get(
     "CORS_ORIGINS",
-    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com,https://resumeiqv1.sentiqlabs.com"
+    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com,https://resumeiqv1.sentiqlabs.com,http://localhost:5173,http://localhost:3000"
 ).split(",")
 
 CORS(app, resources={
@@ -65,6 +68,39 @@ def _serialize_doc(doc):
         return doc
     
     return doc
+
+# ------------------------------
+# Root & Documentation
+# ------------------------------
+@app.route("/")
+def root():
+    """Welcome and API documentation"""
+    return jsonify({
+        "service": "ResumeIQ API",
+        "version": "1.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/ping",
+            "profiles": {
+                "ingest": "POST /api/profile/ingest",
+                "list": "GET /api/profiles",
+                "get": "GET /api/profile/<profile_id>"
+            },
+            "resumes": {
+                "generate": "POST /api/resume/generate",
+                "get": "GET /api/resume/<resume_id>",
+                "render": "GET /api/resume/render/<resume_id>"
+            },
+            "ats": {
+                "analyze": "POST /api/ats/analyze/<resume_id>"
+            },
+            "portfolio": {
+                "generate": "POST /api/portfolio/generate",
+                "download": "GET /api/portfolio/download/<portfolio_id>"
+            }
+        },
+        "debug": "//__routes"
+    }), 200
 
 # ------------------------------
 # Health
@@ -287,37 +323,76 @@ def ats_analyze(resume_id):
 
 
 # ------------------------------
-# Portfolio
+# Portfolio Generation (STRICTLY resume-dependent)
 # ------------------------------
 @app.route("/api/portfolio/generate", methods=["POST"])
 def portfolio_generate():
+    """
+    Generate a portfolio from a resume.
+    
+    CRITICAL: resume_id is MANDATORY
+    """
     try:
         data = request.json or {}
-        profile_id = data.get("profile_id")
         resume_id = data.get("resume_id")
+        profile_id = data.get("profile_id")
+        
+        # ENFORCE: resume_id is required
+        if not resume_id:
+            return jsonify({
+                "error": "resume_id is required. Portfolio cannot be generated without a resume."
+            }), 400
         
         if not profile_id:
             return jsonify({"error": "profile_id is required"}), 400
         
-        portfolio = generate_portfolio(profile_id, resume_id)
+        portfolio = generate_portfolio(resume_id, profile_id)
         # ✅ Ensure JSON serializable
         portfolio = _serialize_doc(portfolio)
-        return jsonify(portfolio), 200
+        return jsonify({
+            "portfolio_id": portfolio["_id"],
+            "created_at": portfolio.get("created_at")
+        }), 201
     except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.exception(f"[PORTFOLIO_GENERATE] Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "error": "Failed to generate portfolio",
+            "detail": str(e)
+        }), 500
 
 
-@app.route("/api/portfolio/<profile_id>")
-def portfolio_get(profile_id):
+@app.route("/api/portfolio/download/<portfolio_id>", methods=["GET"])
+def portfolio_download(portfolio_id):
+    """
+    Download portfolio as static HTML file.
+    
+    Returns:
+        Raw HTML with proper download headers
+    """
     try:
-        portfolio = generate_portfolio(profile_id)
-        return Response(portfolio["html"], mimetype="text/html")
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+        portfolio = get_portfolio_by_id(portfolio_id)
+        
+        if not portfolio:
+            return jsonify({"error": "Portfolio not found"}), 404
+        
+        html = portfolio.get("html", "")
+        
+        # FAIL LOUDLY if HTML is too short
+        if len(html) < 500:
+            return jsonify({
+                "error": "Portfolio HTML is corrupted or incomplete"
+            }), 500
+        
+        response = Response(html, mimetype="text/html")
+        response.headers["Content-Disposition"] = (
+            f"attachment; filename=portfolio_{portfolio['profile_id']}.html"
+        )
+        
+        return response
     except Exception as e:
+        logger.exception(f"[PORTFOLIO_DOWNLOAD] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/__routes")
