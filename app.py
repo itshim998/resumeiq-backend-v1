@@ -24,21 +24,56 @@ from portfolio_repository import get_portfolio_by_id
 
 app = Flask(__name__)
 
-# ✅ CORS Configuration - Allow React frontend
-# CORS origins may be set via the environment variable `CORS_ORIGINS`
-# as a comma-separated list. Defaults to the production frontends.
-cors_origins = os.environ.get(
-    "CORS_ORIGINS",
-    "https://recruiteriq.sentiqlabs.com,https://resumeiq.sentiqlabs.com,https://resumeiqv1.sentiqlabs.com,http://localhost:5173,http://localhost:3000"
-).split(",")
+# ============================================================================
+# CORS CONFIGURATION - PRODUCTION CROSS-ORIGIN SETUP
+# ============================================================================
+# CRITICAL: Frontend is now hosted on Hostinger (https://resumeiqv1.sentiqlabs.com)
+# Backend is API-only on Render (https://recruiteriq.sentiqlabs.com)
+# This is a cross-origin architecture requiring explicit CORS headers.
+#
+# WHY EACH SETTING EXISTS:
+# - origins: Whitelist of allowed frontend domains (Hostinger + local dev)
+# - methods: HTTP verbs the frontend may use
+# - allow_headers: Headers the frontend sends (Content-Type triggers preflight)
+# - expose_headers: Headers the frontend can read from responses
+# - supports_credentials: Allow cookies/auth headers if needed later
+# - max_age: Cache preflight response for 1 hour (reduces OPTIONS calls)
+# ============================================================================
 
-CORS(app, resources={
-    r"/api/*": {
-        "origins": cors_origins,
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+# Production origins - explicitly list all allowed frontends
+PRODUCTION_ORIGINS = [
+    "https://resumeiqv1.sentiqlabs.com",   # Primary frontend on Hostinger
+    "https://resumeiq.sentiqlabs.com",      # Alternate frontend domain
+    "https://recruiteriq.sentiqlabs.com",   # RecruiterIQ frontend
+]
+
+# Development origins - for local testing
+DEV_ORIGINS = [
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:3000",   # Create React App / Next.js
+    "http://localhost:5000",   # Flask dev server
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000",
+]
+
+# Allow override via environment variable (comma-separated)
+cors_origins_env = os.environ.get("CORS_ORIGINS", "")
+if cors_origins_env:
+    cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+else:
+    cors_origins = PRODUCTION_ORIGINS + DEV_ORIGINS
+
+# Apply CORS globally to all /api/* routes
+CORS(
+    app,
+    resources={r"/api/*": {"origins": cors_origins}},
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    expose_headers=["Content-Disposition"],  # For file downloads
+    supports_credentials=True,
+    max_age=3600  # Cache preflight for 1 hour
+)
 
 
 # ✅ Configure logging for debugging
@@ -139,6 +174,9 @@ def ingest_profile_post():
     1. JSON body (React): { "text": "..." }
     2. Form data (HTML forms): text=...
     3. File upload (multipart): file=...
+    
+    NOTE: OPTIONS preflight is handled automatically by Flask-CORS.
+    The explicit OPTIONS method in the decorator ensures Flask routes it correctly.
     """
     
     try:
@@ -147,9 +185,11 @@ def ingest_profile_post():
         logger.info(f"[INGEST] Headers: {dict(request.headers)}")
         logger.info(f"[INGEST] Content-Type: {request.content_type}")
         
-        # ✅ Handle preflight
+        # OPTIONS preflight is handled by Flask-CORS automatically.
+        # This check is a defensive fallback in case Flask-CORS doesn't intercept.
         if request.method == "OPTIONS":
-            return jsonify({"ok": True}), 200
+            # Flask-CORS will add the proper headers; just return 200
+            return "", 200
         
         # 1️⃣ Try JSON first (React / API clients)
         json_data = request.get_json(silent=True)
